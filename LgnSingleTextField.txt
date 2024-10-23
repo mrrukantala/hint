@@ -1,0 +1,243 @@
+package com.telkom.legion.component.textfield
+
+import android.content.Context
+import android.text.InputType
+import android.util.AttributeSet
+import android.util.Log
+import android.util.TypedValue
+import android.view.View
+import android.widget.EditText
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
+import androidx.fragment.app.FragmentManager
+import com.google.android.material.textfield.TextInputLayout
+import com.oratakashi.viewbinding.core.binding.customview.viewBinding
+import com.oratakashi.viewbinding.core.tools.gone
+import com.oratakashi.viewbinding.core.tools.isNull
+import com.telkom.legion.component.R
+import com.telkom.legion.component.databinding.LayoutTextinputSingleunitFieldBinding
+import com.telkom.legion.component.picker.dialog.DropDownDialogFragment
+import com.telkom.legion.component.textfield.base.LgnTextField
+
+open class LgnSingleUnitField @JvmOverloads constructor(
+    context: Context,
+    attrs: AttributeSet? = null,
+    defStyleAttr: Int = 0
+) : LgnTextField(context, attrs, defStyleAttr) {
+
+    private val binding: LayoutTextinputSingleunitFieldBinding by viewBinding(isMarge = true)
+
+    private val dataList: MutableList<String> by lazy { ArrayList() }
+
+    private var listener: ((String) -> Unit)? = null
+
+    var fragmentManager: FragmentManager? = null
+
+    var isOverridesDropdown: Boolean = false
+        set(value) {
+            if (!value) {
+                if (fragmentManager.isNull() and !isInEditMode) {
+                    fragmentManager = (context as FragmentActivity).supportFragmentManager
+                }
+            } else {
+                fragmentManager = null
+            }
+            field = value
+        }
+
+    private var selectedUnit = ""
+
+    val layoutEditText: TextInputLayout by lazy {
+        binding.etBase
+    }
+
+    override val editText: EditText? by lazy {
+        layoutEditText.editText
+    }
+
+    val dropDown: EditText? by lazy {
+        binding.etDropDown.editText
+    }
+
+    override var text: String
+        get() = editText?.text.toString()
+        set(value) {
+            editText?.setText(value)
+        }
+
+    var unit: String
+        get() = selectedUnit
+        set(value) {
+            selectedUnit = value
+            dropDown?.setText(selectedUnit.split(" ").firstOrNull() ?: "")
+        }
+
+    override var hint: String
+        get() = binding.tvHint.text.toString()
+        set(value) {
+            setHint(binding.tvHint, value)
+        }
+
+    override var helper: String
+        get() = binding.tvHelper.text.toString()
+        set(value) {
+            setHelper(binding.tvHelper, value)
+        }
+
+    override var placeHolder: String
+        get() = layoutEditText.placeholderText.toString()
+        set(value) {
+            setPlaceHolder(layoutEditText, value)
+        }
+
+    override var error: String
+        get() = binding.tvError.text.toString()
+        set(value) {
+            with(binding) {
+                if (success.isNotEmpty()) {
+                    success = ""
+                }
+                setError(tvError, value, tvHelper)
+            }
+        }
+
+    override var isEnable: Boolean
+        get() = layoutEditText.isEnabled
+        set(value) {
+            layoutEditText.isEnabled = value
+        }
+
+    override var isRequired: Boolean = false
+        set(value) {
+            field = value
+            setRequired(binding.tvHint, value)
+        }
+
+    override var isOptional: Boolean = false
+        set(value) {
+            field = value
+            setOptional(binding.tvHint, value)
+        }
+
+    override var isError: Boolean = false
+        set(value) {
+            field = value
+
+            if (value) {
+                ContextCompat.getColorStateList(context, R.color.color_textinput_stroke_error)
+                    ?.let {
+                        layoutEditText.setBoxStrokeColorStateList(it)
+                    }
+            } else {
+                ContextCompat.getColorStateList(context, R.color.color_textinput_stroke)?.let {
+                    layoutEditText.setBoxStrokeColorStateList(it)
+                }
+
+                binding.tvError.gone()
+            }
+        }
+    var inputType: Int
+        get() = editText?.inputType ?: 0
+        set(value) {
+            editText?.inputType = value
+        }
+
+    var success: String
+        get() = binding.tvSuccess.text.toString()
+        set(value) {
+            with(binding) {
+                if (error.isNotEmpty()) {
+                    error = ""
+                }
+                setSuccess(tvSuccess, value, tvHelper, etBase)
+            }
+        }
+
+    fun addAll(data: List<String>) {
+        dataList.clear()
+        dataList.addAll(data)
+        dropDown?.setText(data.firstOrNull()?.split(" ")?.firstOrNull() ?: "")
+    }
+
+    fun setOnClickListener(onClick: (View) -> Unit) {
+        dropDown?.setOnClickListener {
+            onClick(it)
+            show()
+        }
+        binding.etDropDown.setEndIconOnClickListener {
+            onClick(it)
+            show()
+        }
+    }
+
+    fun setOnUnitListener(listener: (String) -> Unit) {
+        this.listener = listener
+    }
+
+    fun show() {
+        runCatching {
+            if (fragmentManager != null) {
+                DropDownDialogFragment(
+                    context.getString(R.string.label_title_unit),
+                    dataList,
+                    unit
+                ) { callback ->
+                    unit = callback
+                    listener?.invoke(callback)
+                }.show(fragmentManager!!, "DropDownDialog")
+            }
+        }.onFailure {
+            Log.e(
+                this::class.java.simpleName,
+                "Show Dialog Skipped!, You must set FragmentManager first!"
+            )
+        }
+    }
+
+    init {
+        orientation = VERTICAL
+        if (this.id == -1) {
+            Log.e(
+                this::class.java.simpleName,
+                "No id set to this view. This can lead to state loss in config change. ID -> ${this.id} "
+            )
+        }
+
+        val paddingTop = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            16f, context.resources.displayMetrics
+        )
+        setPadding(0, paddingTop.toInt(), 0, 0)
+
+        isOverridesDropdown = false
+
+        attrs?.let {
+            val attr =
+                context.obtainStyledAttributes(it, R.styleable.LgnSingleUnitField, 0, 0)
+
+            runCatching {
+                hint = attr.getString(R.styleable.LgnSingleUnitField_android_hint).orEmpty()
+                text = attr.getString(R.styleable.LgnSingleUnitField_android_text).orEmpty()
+                helper = attr.getString(R.styleable.LgnSingleUnitField_helperText).orEmpty()
+                placeHolder =
+                    attr.getString(R.styleable.LgnSingleUnitField_placeholderText).orEmpty()
+                inputType = attr.getInt(
+                    R.styleable.LgnSingleUnitField_android_inputType,
+                    InputType.TYPE_CLASS_NUMBER
+                )
+                isEnable = attr.getBoolean(R.styleable.LgnSingleUnitField_android_enabled, true)
+                isOptional = attr.getBoolean(R.styleable.LgnSingleUnitField_isOptional, false)
+                isRequired = attr.getBoolean(R.styleable.LgnSingleUnitField_isRequired, false)
+                isOverridesDropdown =
+                    attr.getBoolean(R.styleable.LgnSingleUnitField_overrideDropdown, false)
+
+                binding.etDropDown.setEndIconOnClickListener { show() }
+                dropDown?.setOnClickListener { show() }
+
+                layoutEditText.editText?.id = this.id
+                binding.etDropDown.id = View.generateViewId()
+            }.onSuccess { attr.recycle() }
+        }
+        binding.root
+    }
+}
