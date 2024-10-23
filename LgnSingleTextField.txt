@@ -1,16 +1,26 @@
-{
-  "package": "com.telkom.legion.component.textfield",
-  "className": "LgnSingleTextField",
-  "extends": "View",
-  "properties": {
-    "hint": "Text",
-    "textStyle": "Style",
-    "inputType": "TextInputType",
-    "textColor": "Color"
-  },
-  "methods": {
-    "setHint": "Mengatur teks hint",
-    "getText": "Mengambil teks input",
-    "setText": "Mengatur teks input"
-  }
-}
+xml
+
+<com.telkom.legion.component.textfield.LgnSingleUnitField
+            android:id="@+id/etUnit"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Luas Area"
+            android:inputType="number"
+            app:placeholderText="Masukkan luas area" />
+
+penggunaan 
+etUnit.addAll(
+                listOf(
+                    "M2",
+                    "Ha",
+                    "Ubin",
+                    "Cm",
+                    "m",
+                    "Liter",
+                    "Karton",
+                    "Kardus",
+                    "Kaleng",
+                    "Gerobak",
+                    "Mobil Box"
+                )
+            )
